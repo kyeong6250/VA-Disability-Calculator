@@ -1,0 +1,10 @@
+{
+  "name": "va-disability-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A static web calculator for VA combined disability ratings and 2026 monthly compensation.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
