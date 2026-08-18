@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VA Disability Calculator</title>
+<meta name="description" content="Combine multiple VA disability ratings using the official whole-person method and bilateral factor, and estimate 2026 monthly compensation." />
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="page-header">
+  <h1>VA Disability Calculator</h1>
+  <p class="subtitle">Combine multiple ratings the way the VA actually does it, then estimate your 2026 monthly compensation.</p>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="conditions-heading">
+    <h2 id="conditions-heading">Your disability ratings</h2>
+    <p class="hint">
+      Add each rated condition. Check "Bilateral" for conditions affecting paired body
+      parts (e.g. both legs, both arms) &mdash; the VA adds a 10% bonus for those before
+      combining everything else.
+    </p>
+    <div id="conditions-list"></div>
+    <button type="button" id="add-condition" class="btn btn-secondary">+ Add condition</button>
+  </section>
+
+  <section class="card" aria-labelledby="dependents-heading">
+    <h2 id="dependents-heading">Dependents</h2>
+    <p class="hint">Dependents only affect pay at 30% or higher &mdash; ratings of 10&ndash;20% pay a flat rate.</p>
+    <div class="dependents-grid">
+      <label class="checkbox-row">
+        <input type="checkbox" id="has-spouse" />
+        Spouse
+      </label>
+      <label class="checkbox-row" id="spouse-aa-row">
+        <input type="checkbox" id="spouse-aa" disabled />
+        Spouse receives Aid &amp; Attendance
+      </label>
+      <label class="field-row">
+        Children under 18
+        <input type="number" id="children-under-18" min="0" value="0" inputmode="numeric" />
+      </label>
+      <label class="field-row">
+        Children 18+ in school
+        <input type="number" id="children-in-school" min="0" value="0" inputmode="numeric" />
+      </label>
+      <label class="field-row">
+        Dependent parents
+        <input type="number" id="dependent-parents" min="0" max="2" value="0" inputmode="numeric" />
+      </label>
+    </div>
+  </section>
+
+  <section class="card results" aria-labelledby="results-heading">
+    <h2 id="results-heading">Results</h2>
+    <div class="results-grid">
+      <div class="result-tile">
+        <span class="result-label">Combined rating</span>
+        <span class="result-value" id="combined-rating">0%</span>
+      </div>
+      <div class="result-tile">
+        <span class="result-label">Estimated monthly compensation</span>
+        <span class="result-value" id="monthly-pay">$0.00</span>
+      </div>
+    </div>
+    <details id="breakdown-details">
+      <summary>Show the math</summary>
+      <div id="breakdown"></div>
+    </details>
+  </section>
+
+  <p class="disclaimer">
+    <strong>Informational only &mdash; not official VA correspondence.</strong>
+    This tool estimates combined ratings and 2026 base compensation (2.8% COLA,
+    effective December 1, 2025) for the scenarios above. It does not cover
+    Special Monthly Compensation, Individual Unemployability, retroactive pay,
+    or every dependent combination the VA recognizes. Always verify your exact
+    amount at <a href="https://www.va.gov/disability/compensation-rates/veteran-rates/" target="_blank" rel="noopener">va.gov</a>.
+  </p>
+</main>
+
+<footer class="footer">
+  <p>Rates: <a href="https://www.va.gov/disability/" target="_blank" rel="noopener">va.gov/disability</a> ·
+     Built by <a href="https://github.com/kyeong6250" target="_blank" rel="noopener">kyeong6250</a></p>
+</footer>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
