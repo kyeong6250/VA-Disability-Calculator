@@ -1,108 +1,149 @@
-import { combineConditions, lookupCompensation, VALID_RATINGS } from "./calc.js";
+import { combineConditions, lookupCompensation } from "./calc.js";
 
 const conditionsList = document.getElementById("conditions-list");
 const addConditionBtn = document.getElementById("add-condition");
-const hasSpouseEl = document.getElementById("has-spouse");
-const spouseAAEl = document.getElementById("spouse-aa");
-const spouseAARow = document.getElementById("spouse-aa-row");
-const childrenUnder18El = document.getElementById("children-under-18");
-const childrenInSchoolEl = document.getElementById("children-in-school");
-const dependentParentsEl = document.getElementById("dependent-parents");
+const statCount = document.getElementById("stat-count");
+const statRaw = document.getElementById("stat-raw");
+const statBilateral = document.getElementById("stat-bilateral");
 const combinedRatingEl = document.getElementById("combined-rating");
 const monthlyPayEl = document.getElementById("monthly-pay");
+const toggleMathBtn = document.getElementById("toggle-math");
 const breakdownEl = document.getElementById("breakdown");
 
-const RATING_OPTIONS = VALID_RATINGS.filter((r) => r > 0);
-const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const toggleSpouse = document.getElementById("toggle-spouse");
+const spouseAARow = document.getElementById("spouse-aa-row");
+const toggleSpouseAA = document.getElementById("toggle-spouse-aa");
 
-let nextRowId = 0;
+const childrenU18Value = document.getElementById("children-u18");
+const childrenSchoolValue = document.getElementById("children-school");
+const parentsValue = document.getElementById("dependent-parents");
 
-function addConditionRow(initialRating = 10) {
-  const id = `condition-${nextRowId++}`;
+const state = {
+  conditions: [
+    { id: 0, rating: 50, bilateral: false },
+    { id: 1, rating: 20, bilateral: false },
+  ],
+  nextId: 2,
+  hasSpouse: false,
+  spouseAA: false,
+  childrenUnder18: 0,
+  childrenInSchool: 0,
+  dependentParents: 0,
+  showMath: false,
+};
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function createConditionRow(condition, index) {
   const row = document.createElement("div");
   row.className = "condition-row";
-  row.dataset.id = id;
 
-  const select = document.createElement("select");
-  select.setAttribute("aria-label", "Rating percentage");
-  for (const rating of RATING_OPTIONS) {
-    const opt = document.createElement("option");
-    opt.value = String(rating);
-    opt.textContent = `${rating}%`;
-    if (rating === initialRating) opt.selected = true;
-    select.appendChild(opt);
-  }
+  const head = document.createElement("div");
+  head.className = "condition-row-head";
 
-  const bilateralLabel = document.createElement("label");
-  bilateralLabel.className = "checkbox-row bilateral-row";
-  const bilateralCheckbox = document.createElement("input");
-  bilateralCheckbox.type = "checkbox";
-  bilateralLabel.append(bilateralCheckbox, " Bilateral (paired limb)");
+  const label = document.createElement("span");
+  label.className = "label";
+  label.textContent = `Condition ${index + 1}`;
+
+  const right = document.createElement("div");
+  right.className = "right";
+
+  const ratingValue = document.createElement("span");
+  ratingValue.className = "rating-value";
+  ratingValue.textContent = `${condition.rating}%`;
 
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
-  removeBtn.className = "btn btn-remove";
-  removeBtn.textContent = "Remove";
+  removeBtn.className = "icon-btn";
   removeBtn.setAttribute("aria-label", "Remove condition");
+  removeBtn.textContent = "×";
   removeBtn.addEventListener("click", () => {
-    row.remove();
-    recalculate();
+    state.conditions = state.conditions.filter((c) => c.id !== condition.id);
+    renderConditions();
   });
 
-  select.addEventListener("change", recalculate);
-  bilateralCheckbox.addEventListener("change", recalculate);
+  right.append(ratingValue, removeBtn);
+  head.append(label, right);
 
-  row.append(select, bilateralLabel, removeBtn);
-  conditionsList.appendChild(row);
-  recalculate();
-}
-
-function readConditions() {
-  return [...conditionsList.querySelectorAll(".condition-row")].map((row) => {
-    const rating = Number(row.querySelector("select").value);
-    const bilateral = row.querySelector("input[type=checkbox]").checked;
-    return { rating, bilateral };
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.className = "va-slider";
+  slider.min = "10";
+  slider.max = "100";
+  slider.step = "10";
+  slider.value = String(condition.rating);
+  slider.setAttribute("aria-label", `Condition ${index + 1} rating percentage`);
+  // Update the rating in place (not a full re-render) so dragging the thumb
+  // doesn't destroy and recreate the slider element mid-drag.
+  slider.addEventListener("input", (e) => {
+    condition.rating = parseInt(e.target.value, 10);
+    ratingValue.textContent = `${condition.rating}%`;
+    updateResults();
   });
+
+  const bilateralLabel = document.createElement("label");
+  bilateralLabel.className = "bilateral-label";
+
+  const toggle = document.createElement("div");
+  toggle.className = `toggle ${condition.bilateral ? "on" : "off"}`;
+  const knob = document.createElement("div");
+  knob.className = "knob";
+  toggle.appendChild(knob);
+  toggle.addEventListener("click", () => {
+    condition.bilateral = !condition.bilateral;
+    toggle.className = `toggle ${condition.bilateral ? "on" : "off"}`;
+    updateResults();
+  });
+
+  bilateralLabel.append(toggle, document.createTextNode(" Bilateral (paired limb)"));
+
+  row.append(head, slider, bilateralLabel);
+  return row;
 }
 
-function readDependents() {
+function renderConditions() {
+  conditionsList.innerHTML = "";
+  state.conditions.forEach((c, i) => conditionsList.appendChild(createConditionRow(c, i)));
+  updateResults();
+}
+
+function readDeps() {
   return {
-    hasSpouse: hasSpouseEl.checked,
-    spouseAA: spouseAAEl.checked,
-    childrenUnder18: Math.max(0, Number(childrenUnder18El.value) || 0),
-    childrenInSchool: Math.max(0, Number(childrenInSchoolEl.value) || 0),
-    dependentParents: Math.max(0, Number(dependentParentsEl.value) || 0),
+    hasSpouse: state.hasSpouse,
+    spouseAA: state.spouseAA,
+    childrenUnder18: state.childrenUnder18,
+    childrenInSchool: state.childrenInSchool,
+    dependentParents: state.dependentParents,
   };
 }
 
-function renderBreakdown(conditions, result, deps, pay) {
+function buildBreakdown(conditions, result, deps, pay) {
   const lines = [];
+  const fmt = (n) => Math.round(n * 100) / 100;
 
   if (result.bilateralGroup.length >= 2) {
     lines.push(
-      `Bilateral group (${result.bilateralGroup.map((r) => r + "%").join(", ")}) combines to ` +
-        `${fmt(result.bilateralCombinedRaw)}%, then +10% bilateral bonus &rarr; ${fmt(result.bilateralAdjusted)}%.`
+      `Bilateral group (${result.bilateralGroup.map((r) => r + "%").join(", ")}) combines to ${fmt(
+        result.bilateralCombinedRaw
+      )}%, then +10% bilateral bonus → ${fmt(result.bilateralAdjusted)}%.`
     );
   } else if (result.bilateralGroup.length === 1) {
-    lines.push(`Only one condition was marked bilateral, so no pairing bonus applies.`);
+    lines.push("Only one condition was marked bilateral, so no pairing bonus applies.");
   }
 
   const nonBilateralCount = conditions.filter((c) => c.rating > 0 && !c.bilateral).length;
-  const totalGroups =
-    nonBilateralCount + (result.bilateralGroup.length >= 2 ? 1 : result.bilateralGroup.length);
+  const totalGroups = nonBilateralCount + (result.bilateralGroup.length >= 2 ? 1 : result.bilateralGroup.length);
 
   if (totalGroups > 1) {
-    lines.push(
-      `Combining all values highest to lowest (each rating applies to what's left, not the raw total) gives ${fmt(
-        result.combinedRaw
-      )}%.`
-    );
+    lines.push(`Combining all values highest to lowest gives ${fmt(result.combinedRaw)}%.`);
   }
 
   lines.push(`Rounded to the nearest 10%: <strong>${result.combinedRounded}%</strong>.`);
 
   if (result.combinedRounded < 30 && result.combinedRounded > 0) {
-    lines.push(`At ${result.combinedRounded}%, pay is a flat rate &mdash; dependents don't add anything.`);
+    lines.push(`At ${result.combinedRounded}%, pay is a flat rate — dependents don't add anything.`);
   } else if (result.combinedRounded >= 30) {
     const parts = [];
     if (deps.hasSpouse && deps.childrenUnder18 > 0) parts.push("spouse + first child under 18");
@@ -113,42 +154,94 @@ function renderBreakdown(conditions, result, deps, pay) {
     if (deps.childrenInSchool > 0) parts.push(`${deps.childrenInSchool} child(ren) 18+ in school`);
     if (deps.dependentParents > 0) parts.push(`${deps.dependentParents} dependent parent(s)`);
     if (deps.hasSpouse && deps.spouseAA) parts.push("spouse Aid & Attendance");
-    lines.push(`Monthly pay at ${result.combinedRounded}% for ${parts.join(", ")}: <strong>${currency.format(pay)}</strong>.`);
+    lines.push(`Monthly pay at ${result.combinedRounded}% for ${parts.join(", ")}: <strong>$${pay.toFixed(2)}</strong>.`);
   }
 
-  // innerHTML is safe here: every value interpolated above comes from a
-  // <select> constrained to VALID_RATINGS or a number input coerced through
-  // Number()/Math.max() -- there are no free-text fields anywhere in this
-  // app, so nothing attacker-controlled ever reaches this string.
-  breakdownEl.innerHTML = lines.map((l) => `<p>${l}</p>`).join("");
+  return lines;
 }
 
-function fmt(n) {
-  return Math.round(n * 100) / 100;
-}
-
-function recalculate() {
-  const conditions = readConditions();
-  const deps = readDependents();
-
-  spouseAAEl.disabled = !deps.hasSpouse;
-  spouseAARow.classList.toggle("disabled", !deps.hasSpouse);
-  if (!deps.hasSpouse) spouseAAEl.checked = false;
-
-  const result = combineConditions(conditions);
+function updateResults() {
+  const result = combineConditions(state.conditions);
+  const deps = readDeps();
   const pay = lookupCompensation(result.combinedRounded, deps);
 
+  statCount.textContent = String(state.conditions.length);
+  statRaw.textContent = state.conditions.length ? `${Math.round(result.combinedRaw * 10) / 10}%` : "—";
+  statBilateral.textContent = result.bilateralGroup.length >= 2 ? "+10%" : "—";
   combinedRatingEl.textContent = `${result.combinedRounded}%`;
-  monthlyPayEl.textContent = currency.format(pay);
-  renderBreakdown(conditions, result, deps, pay);
+  monthlyPayEl.textContent = `$${Math.round(pay).toLocaleString()}`;
+
+  // Safe to use innerHTML: every value woven into buildBreakdown()'s lines
+  // comes from slider/toggle/stepper state (numbers and fixed strings), not
+  // free-text input -- there are no text fields anywhere in this app.
+  breakdownEl.innerHTML = buildBreakdown(state.conditions, result, deps, pay)
+    .map((l) => `<p>${l}</p>`)
+    .join("");
 }
 
-addConditionBtn.addEventListener("click", () => addConditionRow());
-[hasSpouseEl, spouseAAEl, childrenUnder18El, childrenInSchoolEl, dependentParentsEl].forEach((el) =>
-  el.addEventListener("input", recalculate)
-);
+function updateSpouseUI() {
+  toggleSpouse.className = `toggle ${state.hasSpouse ? "on" : "off"}`;
+  toggleSpouseAA.className = `toggle ${state.spouseAA ? "on" : "off"}`;
+  spouseAARow.classList.toggle("disabled-row", !state.hasSpouse);
+}
 
-// Start with two rows -- a combined-rating calculator with only one row
-// isn't very useful, and this nudges people toward the common case.
-addConditionRow(50);
-addConditionRow(20);
+addConditionBtn.addEventListener("click", () => {
+  state.conditions.push({ id: state.nextId++, rating: 10, bilateral: false });
+  renderConditions();
+});
+
+toggleSpouse.addEventListener("click", () => {
+  state.hasSpouse = !state.hasSpouse;
+  if (!state.hasSpouse) state.spouseAA = false;
+  updateSpouseUI();
+  updateResults();
+});
+
+toggleSpouseAA.addEventListener("click", () => {
+  if (!state.hasSpouse) return;
+  state.spouseAA = !state.spouseAA;
+  updateSpouseUI();
+  updateResults();
+});
+
+toggleMathBtn.addEventListener("click", () => {
+  state.showMath = !state.showMath;
+  breakdownEl.classList.toggle("hidden", !state.showMath);
+  toggleMathBtn.textContent = state.showMath ? "Hide the math" : "Show the math";
+});
+
+document.getElementById("dec-children-u18").addEventListener("click", () => {
+  state.childrenUnder18 = clamp(state.childrenUnder18 - 1, 0, 10);
+  childrenU18Value.textContent = String(state.childrenUnder18);
+  updateResults();
+});
+document.getElementById("inc-children-u18").addEventListener("click", () => {
+  state.childrenUnder18 = clamp(state.childrenUnder18 + 1, 0, 10);
+  childrenU18Value.textContent = String(state.childrenUnder18);
+  updateResults();
+});
+
+document.getElementById("dec-children-school").addEventListener("click", () => {
+  state.childrenInSchool = clamp(state.childrenInSchool - 1, 0, 10);
+  childrenSchoolValue.textContent = String(state.childrenInSchool);
+  updateResults();
+});
+document.getElementById("inc-children-school").addEventListener("click", () => {
+  state.childrenInSchool = clamp(state.childrenInSchool + 1, 0, 10);
+  childrenSchoolValue.textContent = String(state.childrenInSchool);
+  updateResults();
+});
+
+document.getElementById("dec-parents").addEventListener("click", () => {
+  state.dependentParents = clamp(state.dependentParents - 1, 0, 2);
+  parentsValue.textContent = String(state.dependentParents);
+  updateResults();
+});
+document.getElementById("inc-parents").addEventListener("click", () => {
+  state.dependentParents = clamp(state.dependentParents + 1, 0, 2);
+  parentsValue.textContent = String(state.dependentParents);
+  updateResults();
+});
+
+updateSpouseUI();
+renderConditions();

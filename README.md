@@ -4,8 +4,7 @@ A small static web app that combines multiple VA disability ratings the way
 the VA actually does it (not simple addition) and estimates 2026 monthly
 compensation. No build step, no framework, no dependencies.
 
-Live at: https://kyeong6250.github.io/VA-Disability-Calculator/ (once GitHub
-Pages is enabled for this repo).
+Live at: https://kyeong6250.github.io/VA-Disability-Calculator/
 
 ## Why not just add the percentages?
 
@@ -18,13 +17,15 @@ actual dollar amount for your combined rating and dependents.
 
 ## Using it
 
-1. Add each rated condition and its percentage. Check "Bilateral" for a
-   condition that's one of a matching pair (e.g. left knee and right knee
-   both rated).
-2. Fill in dependents — spouse, children, dependent parents. This only
-   changes pay at 30% or higher; below that it's a flat rate.
-3. Read the combined rating and estimated monthly payment, and expand
-   "Show the math" to see exactly how it was computed.
+1. Add each rated condition and drag its slider to the percentage. Toggle
+   "Bilateral" for a condition that's one of a matching pair (e.g. left knee
+   and right knee both rated).
+2. Fill in dependents in the side panel — spouse, children, dependent
+   parents. This only changes pay at 30% or higher; below that it's a flat
+   rate (the "Spouse Aid & Attendance" toggle only does anything once a
+   spouse is set).
+3. Read the combined rating and estimated monthly payment, and hit "Show
+   the math" to see exactly how it was computed.
 
 ## What it does and doesn't cover
 
